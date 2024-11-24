@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 picture = ThermoImage.from_path("data/p1.jpg")
 
 print(picture.thermalResolution)
+print(picture.info)
 
 # Plot the temperature data
 plt.imshow(picture.temperature.transpose() / 10)

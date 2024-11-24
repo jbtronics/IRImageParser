@@ -24,6 +24,16 @@ class ThermoSpot:
     # The temperature value in deci celsius
     value: int
 
+    @classmethod
+    def from_bytes(cls, data: bytes) -> ThermoSpot:
+        # The first two bytes is the x position
+        x = struct.unpack("<H", data[:2])[0]
+        # The second 2 byte is the y position
+        y = struct.unpack("<H", data[2:4])[0]
+        # The next 4 bytes are the temperature value
+        value = struct.unpack("<I", data[4:8])[0]
+        return cls(x=x, y=y, value=value)
+
 """
 This enum represents the available color palettes in the thermal cameras
 """
@@ -68,12 +78,66 @@ class ThermoMetadata:
     # The color palette that was chosen in the camera for the picture
     selectedPalette: ThermoPalette
 
-    # The mix grade between the ir and vis picture in percentage
+    # The mix grade between the ir and vis picture in percentage (0 means only ir, 100 means only vis)
     mixFactor: int
 
     # Image margins of the visible picture [top, right, bottom, left] in pixels
     imageMargin: tuple[int, int, int, int]
 
+    @classmethod
+    def from_bytes(cls, data: bytes) -> ThermoMetadata:
+        # The first 4 bytes is the size of the following metadata (as uint32)
+        size = struct.unpack("<I", data[:4])[0]
+        data = data[4:]
+        # If the size is not 112 bytes, we do not know this format
+        if size != 112:
+            raise ValueError(f"Unknown metadata size: {size}")
+
+        # Afterwards 20 bytes for the model follows
+        model = data[:20].decode("utf-8").strip().rstrip("\x00")
+        data = data[20:]
+
+        # Afterwards 20 bytes for the firmware version follows
+        firmware = data[:20].decode("utf-8").rstrip("\x00")
+        data = data[20:]
+
+        # The next 20 bytes are the capture datetime as string
+        captureTime = datetime.strptime(data[:20].decode("utf-8").rstrip("\x00"), "%Y/%m/%d-%H:%M:%S")
+        data = data[20:]
+
+        # Then 8 bytes for the center spot follow
+        spotCenter = ThermoSpot.from_bytes(data[:8])
+        data = data[8:]
+
+        # Then 8 bytes for max spot follow
+        spotMax = ThermoSpot.from_bytes(data[:8])
+        data = data[8:]
+
+        # Then 8 bytes for min spot follow
+        spotMin = ThermoSpot.from_bytes(data[:8])
+        data = data[8:]
+
+        # then 4 bytes for the emissivity follow (as uint32)
+        emissivity = struct.unpack("<I", data[:4])[0] / 100
+        data = data[4:]
+
+        # Then 4 bytes for the selected palette follow
+        selectedPalette = ThermoPalette(struct.unpack("<I", data[:4])[0])
+        data = data[4:]
+
+        # Then 4 bytes for the unit follow
+        unit = ThermoUnit(struct.unpack("<I", data[:4])[0])
+        data = data[4:]
+
+        # Then 4 bytes for the mix factor follow
+        mixFactor = struct.unpack("<I", data[:4])[0]
+        data = data[4:]
+
+        # Then 8 bytes for the image margin follow (2 for each side)
+        imageMargin = struct.unpack("<HHHH", data[:8])
+        data = data[8:]
+
+        return cls(model=model, firmware=firmware, captureTime=captureTime, spotCenter=spotCenter, spotMin=spotMin, spotMax=spotMax, emissivity=emissivity, selectedPalette=selectedPalette, mixFactor=mixFactor, imageMargin=imageMargin)
 
 
 """
@@ -145,7 +209,10 @@ class ThermoImage:
                 grayScale[x, y] = struct.unpack("<B", data[:1])[0]
                 data = data[1:]
 
-        return cls(mixed=mixed, visible=visible, thermalResolution=(w, h), temperature=temperature, grayScale=grayScale, info=None)
+        # Now the metadata follows
+        info = ThermoMetadata.from_bytes(data)
+
+        return cls(mixed=mixed, visible=visible, thermalResolution=(w, h), temperature=temperature, grayScale=grayScale, info=info)
 
 
 
