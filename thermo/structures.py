@@ -24,6 +24,16 @@ class ThermoSpot:
     # The temperature value in deci celsius
     value: int
 
+    """
+    Returns the temperature value in celsius
+    """
+    @property
+    def value_celsius(self) -> float:
+        return self.value / 10
+
+    def value_formatted(self) -> str:
+        return f"{self.value_celsius:.1f} °C"
+
     @classmethod
     def from_bytes(cls, data: bytes) -> ThermoSpot:
         # The first two bytes is the x position
@@ -61,28 +71,52 @@ class ThermoMetadata:
     firmware: str
 
     # The time the image was taken (called captureTime internally)
-    captureTime: datetime
+    capture_time: datetime
 
     # The spot representing the center spot
-    spotCenter: ThermoSpot
+    spot_center: ThermoSpot
 
     # The spot representing the minimum temperature spot
-    spotMin: ThermoSpot
+    spot_min: ThermoSpot
 
     # The spot representing the maximum temperature spot
-    spotMax: ThermoSpot
+    spot_max: ThermoSpot
 
     # The emissivity that was configured in the camera
     emissivity: int
 
     # The color palette that was chosen in the camera for the picture
-    selectedPalette: ThermoPalette
+    selected_palette: ThermoPalette
+
+    # The unit that was chosen in the camera for the picture
+    selected_unit: ThermoUnit
 
     # The mix grade between the ir and vis picture in percentage (0 means only ir, 100 means only vis)
-    mixFactor: int
+    mix_factor: int
 
     # Image margins of the visible picture [top, right, bottom, left] in pixels
-    imageMargin: tuple[int, int, int, int]
+    image_margins: tuple[int, int, int, int]
+
+    """
+    Returns the center temperature in celsius
+    """
+    @property
+    def center_temperature(self) -> float:
+        return self.spot_center.value_celsius
+
+    """
+    Returns the minimum temperature in celsius
+    """
+    @property
+    def min_temperature(self) -> float:
+        return self.spot_min.value_celsius
+
+    """
+    Returns the maximum temperature in celsius
+    """
+    @property
+    def max_temperature(self) -> float:
+        return self.spot_max.value_celsius
 
     @classmethod
     def from_bytes(cls, data: bytes) -> ThermoMetadata:
@@ -137,7 +171,7 @@ class ThermoMetadata:
         imageMargin = struct.unpack("<HHHH", data[:8])
         data = data[8:]
 
-        return cls(model=model, firmware=firmware, captureTime=captureTime, spotCenter=spotCenter, spotMin=spotMin, spotMax=spotMax, emissivity=emissivity, selectedPalette=selectedPalette, mixFactor=mixFactor, imageMargin=imageMargin)
+        return cls(model=model, firmware=firmware, capture_time=captureTime, spot_center=spotCenter, spot_min=spotMin, spot_max=spotMax, emissivity=emissivity, selected_palette=selectedPalette, mix_factor=mixFactor, image_margins=imageMargin, selected_unit=unit)
 
 
 """
@@ -154,16 +188,30 @@ class ThermoImage:
     visible: Image.Image
 
     # The thermal resolution of the camera (width, height)
-    thermalResolution: tuple[int, int]
+    thermal_resolution: tuple[int, int]
 
     # The temperature data [x, y] (0 upper left) for each pixel in the image (two-dimensional array, w x h), in deci Celsius (°C * 10)
     temperature: ndarray[int, int]
 
     # A gray scale representation [x, y] (0 upper left) of the temperature data (two-dimensional array, w x h), between 0 and 256
-    grayScale: ndarray[int, int]
+    gray_scale: ndarray[int, int]
 
     # The metadata / info of the image,
     info: ThermoMetadata
+
+    """
+    Returns the temperature data in celsius
+    """
+    @property
+    def temperature_celsius(self):
+        return self.temperature / 10
+
+    """
+    Returns the resolution of the visible image
+    """
+    @property
+    def visible_resolution(self):
+        return self.visible.size
 
     @classmethod
     def from_bytes(cls, data: bytes) -> ThermoImage:
@@ -212,10 +260,7 @@ class ThermoImage:
         # Now the metadata follows
         info = ThermoMetadata.from_bytes(data)
 
-        return cls(mixed=mixed, visible=visible, thermalResolution=(w, h), temperature=temperature, grayScale=grayScale, info=info)
-
-
-
+        return cls(mixed=mixed, visible=visible, thermal_resolution=(w, h), temperature=temperature, gray_scale=grayScale, info=info)
 
     @classmethod
     def from_path(cls, path: str) -> ThermoImage:
