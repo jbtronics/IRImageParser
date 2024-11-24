@@ -64,6 +64,9 @@ This class represents the metadata of a thermal image (called t_IRInfo in hki co
 @dataclass()
 class ThermoMetadata:
 
+    # The size of the metadata in bytes (this can be used as some kind of version number of the metadata format)
+    byte_size: int
+
     # The camera model (e.g. "HT-04D") (called devType internally)
     model: str
 
@@ -123,8 +126,9 @@ class ThermoMetadata:
         # The first 4 bytes is the size of the following metadata (as uint32)
         size = struct.unpack("<I", data[:4])[0]
         data = data[4:]
-        # If the size is not 112 bytes, we do not know this format
-        if size != 112:
+        # If the size is not 112 bytes (or 104), we do not know this format
+        # The 104 size is used in the HT-19 model with firmware (2.1.19)
+        if size != 112 and size != 104:
             raise ValueError(f"Unknown metadata size: {size}")
 
         # Afterwards 20 bytes for the model follows
@@ -167,11 +171,15 @@ class ThermoMetadata:
         mixFactor = struct.unpack("<I", data[:4])[0]
         data = data[4:]
 
-        # Then 8 bytes for the image margin follow (2 for each side)
-        imageMargin = struct.unpack("<HHHH", data[:8])
-        data = data[8:]
+        # If we have the newer metadata format, we have 8 bytes for the image margin
+        if size == 112:
+            # Then 8 bytes for the image margin follow (2 for each side)
+            imageMargin = struct.unpack("<HHHH", data[:8])
+            data = data[8:]
+        else:
+            imageMargin = (0, 0, 0, 0)
 
-        return cls(model=model, firmware=firmware, capture_time=captureTime, spot_center=spotCenter, spot_min=spotMin, spot_max=spotMax, emissivity=emissivity, selected_palette=selectedPalette, mix_factor=mixFactor, image_margins=imageMargin, selected_unit=unit)
+        return cls(model=model, firmware=firmware, capture_time=captureTime, spot_center=spotCenter, spot_min=spotMin, spot_max=spotMax, emissivity=emissivity, selected_palette=selectedPalette, mix_factor=mixFactor, image_margins=imageMargin, selected_unit=unit, byte_size=size)
 
 
 """
