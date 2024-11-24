@@ -1,4 +1,6 @@
-from thermo import structures
+#!/usr/bin/env python3
+
+import argparse
 from thermo.structures import ThermoImage, ThermoMetadata
 import matplotlib.pyplot as plt
 
@@ -23,8 +25,15 @@ def print_info(image: ThermoImage) -> None:
     print("===========================")
 
 
+# Parse argument file path
+parser = argparse.ArgumentParser(description="Parse a HTI JPEG image")
+parser.add_argument("path", type=str, help="Path to the JPEG image")
+args = parser.parse_args()
+
+path = args.path
+
 # Load the image
-picture = ThermoImage.from_path("data/p1.jpg")
+picture = ThermoImage.from_path(path)
 
 # Display the contained mixed and visible image
 picture.mixed.show()
