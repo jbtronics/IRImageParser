@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import io
+
 from PIL import Image
 from numpy import ndarray
 from datetime import datetime
@@ -88,7 +91,7 @@ class ThermoImage:
     # The thermal resolution of the camera (width, height)
     thermalResolution: tuple[int, int]
 
-    # The temperature data for each pixel in the image (two-dimensional array, w x h), in decidegree celsius (°C * 10) ?
+    # The temperature data for each pixel in the image (two-dimensional array, w x h), in decidegree Celsius (°C * 10) ?
     temperature: ndarray[int, int]
 
     # A gray scale representation of the temperature data (two-dimensional array, w x h), between 0 and 2^16 ?
@@ -96,3 +99,34 @@ class ThermoImage:
 
     # The metadata / info of the image,
     info: ThermoMetadata
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> ThermoImage:
+        # Mixed image
+        # The first available image is the mixed image
+        mixed = Image.open(io.BytesIO(data))
+
+        # Search for the JPEG end marker and new JPEG start marker
+        # This is the point where the mixed image ends and the visible image starts
+        mixedEnd = data.find(b"\xFF\xD9\xFF\xD8")
+        # Move the data pointer to the end of the mixed image, so we can read the visible image next
+        data = data[mixedEnd + 2:]
+
+        # Create a new image object from a bytes object
+        visible = Image.open(io.BytesIO(data))
+
+        # Move the data pointer to the end of the visible image, so we can read the thermal data next
+        visibleEnd = data.find(b"\xFF\xD9")  # Find the JPEG end marker
+        data = data[visibleEnd + 2:]
+
+        return cls(mixed, visible, (0, 0), None, None, None)
+
+
+
+
+    @classmethod
+    def from_path(cls, path: str) -> ThermoImage:
+        # Open file
+        with open(path, mode="rb") as f:
+            data = f.read()
+            return cls.from_bytes(data)
