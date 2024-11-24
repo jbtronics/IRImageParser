@@ -72,3 +72,9 @@ Mixing factor: 0
 Image margins: (0, 0, 0, 0)
 ===========================
 ```
+
+## License
+This library is licensed under the MIT license. That means you can use this library for any purpose free of charge,
+as long as you retain the license information in the source code.
+
+See the LICENSE file for more information.
