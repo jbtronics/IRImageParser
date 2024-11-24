@@ -41,7 +41,7 @@ class ThermoSpot:
         # The second 2 byte is the y position
         y = struct.unpack("<H", data[2:4])[0]
         # The next 4 bytes are the temperature value
-        value = struct.unpack("<I", data[4:8])[0]
+        value = struct.unpack("<i", data[4:8])[0]
         return cls(x=x, y=y, value=value)
 
 """
@@ -249,7 +249,7 @@ class ThermoImage:
         temperature = ndarray((w, h), dtype=int)
         for y in range(h):
             for x in range(w):
-                temperature[x, y] = struct.unpack("<H", data[:2])[0]
+                temperature[x, y] = struct.unpack("<h", data[:2])[0]
                 data = data[2:]
 
         # Now again width and height follow for the gray scale picture, they should be the same as the thermal image
