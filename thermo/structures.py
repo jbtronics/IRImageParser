@@ -7,6 +7,7 @@ from numpy import ndarray
 from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
+import struct
 
 """
 Represents a spot in an image, containing temperature data
@@ -20,7 +21,7 @@ class ThermoSpot:
     # Y position
     y: int
 
-    # The temperature value in decidegree celsius
+    # The temperature value in deci celsius
     value: int
 
 """
@@ -91,10 +92,10 @@ class ThermoImage:
     # The thermal resolution of the camera (width, height)
     thermalResolution: tuple[int, int]
 
-    # The temperature data for each pixel in the image (two-dimensional array, w x h), in decidegree Celsius (°C * 10) ?
+    # The temperature data [x, y] (0 upper left) for each pixel in the image (two-dimensional array, w x h), in deci Celsius (°C * 10)
     temperature: ndarray[int, int]
 
-    # A gray scale representation of the temperature data (two-dimensional array, w x h), between 0 and 2^16 ?
+    # A gray scale representation [x, y] (0 upper left) of the temperature data (two-dimensional array, w x h), between 0 and 256
     grayScale: ndarray[int, int]
 
     # The metadata / info of the image,
@@ -119,7 +120,32 @@ class ThermoImage:
         visibleEnd = data.find(b"\xFF\xD9")  # Find the JPEG end marker
         data = data[visibleEnd + 2:]
 
-        return cls(mixed, visible, (0, 0), None, None, None)
+        # The next 4 bytes are the width and height of the thermal image
+        (w, h) = struct.unpack("<HH", data[:4])
+        data = data[4:]
+
+        # Now 2 * w * h bytes follow, representing the temperature data
+        # The temperature data is stored in 2 bytes per pixel
+        temperature = ndarray((w, h), dtype=int)
+        for y in range(h):
+            for x in range(w):
+                temperature[x, y] = struct.unpack("<H", data[:2])[0]
+                data = data[2:]
+
+        # Now again width and height follow for the gray scale picture, they should be the same as the thermal image
+        (w2, h2) = struct.unpack("<HH", data[:4])
+        data = data[4:]
+        if w2 != w or h2 != h:
+            raise ValueError("Gray scale image has different dimensions than thermal image")
+
+        # Now w * h bytes follow, representing the gray scale data (1 byte per pixel)
+        grayScale = ndarray((w, h), dtype=int)
+        for y in range(h):
+            for x in range(w):
+                grayScale[x, y] = struct.unpack("<B", data[:1])[0]
+                data = data[1:]
+
+        return cls(mixed=mixed, visible=visible, thermalResolution=(w, h), temperature=temperature, grayScale=grayScale, info=None)
 
 
 
