@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import io
 
 # This file should convert the jpeg from the HTI cameras to a Infiray IRG file
 
@@ -74,15 +75,15 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
     # Then 4000 as uint32 follows
     out += struct.pack("<I", 4000)
 
-    # We should have 46 bytes now
-    assert len(out) == 46
+    # We should have 50 bytes now
+    assert len(out) == 50
 
     # Then the transmittivity times 10000 follows (as uint32)
     # Just use a fixed value here
     out += struct.pack("<I", int(1.0 * 10000))
 
-    # Then 3 zero bytes follow
-    out += bytes([0x00, 0x00, 0x00])
+    # Then 4 zero bytes follow
+    out += bytes([0x00, 0x00, 0x00, 0x00])
 
     # Then a 10000 as uint32 follows
     out += struct.pack("<I", 10000)
@@ -100,8 +101,8 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
     out += struct.pack("<I", 4)
 
     # Then the temperature unit as uint8 follows (0 = Celsius, 1 = Kelvin, 2 = Fahrenheit)
-    # We just use Celsius here
-    out += bytes([0x00])
+    # We just use kelvin here
+    out += bytes([0x01])
 
     # We should have 75 bytes now
     assert len(out) == 75
@@ -116,3 +117,42 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
     assert len(out) == 128
 
     return out
+
+def generate_irg_file_bytes(thermo: ThermoImage) -> bytes:
+    out = bytes()
+
+    # Convert the visible image to a JPEG
+    bytes_io = io.BytesIO()
+    thermo.visible.save(bytes_io, format="JPEG")
+    vis_jpeg_bytes = bytes_io.getvalue()
+
+    # Generate the header
+    out += generate_irg_header(thermo, vis_jpeg_bytes)
+
+    # Next the grayscale image as uint8 bytes follow
+    for row in thermo.gray_scale:
+        for pixel in row:
+            out += struct.pack("<B", pixel)
+
+    # Next the temperature data as uint16 bytes follow (in deci kelvin)
+    for row in thermo.temperature_kelvin():
+        for pixel in row:
+            out += struct.pack("<H", int(pixel * 10))
+
+    # Finally the visible image as JPEG bytes follow
+    out += vis_jpeg_bytes
+
+    return out
+
+# Read in the thermo image
+path = "data/p1.jpg"
+
+
+
+# Load the image
+picture = ThermoImage.from_path(path)
+
+# Open the IRG file for writing
+with open("data/p1.irg", "wb") as f:
+    # Write the IRG file
+    f.write(generate_irg_file_bytes(picture))

@@ -215,6 +215,12 @@ class ThermoImage:
         return self.temperature / 10
 
     """
+    Returns the temperature data in kelvin
+    """
+    def temperature_kelvin(self):
+        return self.temperature_celsius + 273.15
+
+    """
     Returns the resolution of the visible image
     """
     @property
