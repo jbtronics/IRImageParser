@@ -130,12 +130,13 @@ def generate_irg_file_bytes(thermo: ThermoImage) -> bytes:
     out += generate_irg_header(thermo, vis_jpeg_bytes)
 
     # Next the grayscale image as uint8 bytes follow
-    for row in thermo.gray_scale:
+    # The data needs to be transposed to be in the correct format
+    for row in thermo.gray_scale.transpose():
         for pixel in row:
             out += struct.pack("<B", pixel)
 
     # Next the temperature data as uint16 bytes follow (in deci kelvin)
-    for row in thermo.temperature_kelvin():
+    for row in thermo.temperature_kelvin().transpose():
         for pixel in row:
             out += struct.pack("<H", int(pixel * 10))
 
