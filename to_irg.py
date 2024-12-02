@@ -2,19 +2,28 @@
 import io
 import os
 
+import numpy
+
 # This file should convert the jpeg from the HTI cameras to a Infiray IRG file
 
 from thermo.structures import ThermoImage, ThermoMetadata
 import struct
 
-def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
+def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes, mode: str = "upscale") -> bytes:
     """
     Generates the header of the IRG file
     These header are exactly 128 bytes long
+    :param mode:
     :param thermo:
     :param vis_jpeg_bytes: A JPEG encoded bytes object of the visible image
+    :param upscale_factor: The factor by which all ir resolutions should be upscaled
     :return:
     """
+
+    if mode == "upscale":
+        upscale_factor = thermo.visible_resolution[0] // thermo.thermal_resolution[0]
+    else:
+        upscale_factor = 1
 
     # First we start with a header denoting the camera model (we use BA AB here, which seems to be used in Vevor SC240M)
     # See https://github.com/jelle737/Vevor-Thermal-Utilities/tree/main
@@ -24,11 +33,11 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
     out += bytes([0x80, 0x00])
 
     # Then the length of our grayscale image follows (as uint32)
-    out += struct.pack("<I", len(thermo.gray_scale))
+    out += struct.pack("<I", thermo.gray_scale.size * upscale_factor**2)
     # Next the height of the grayscale image as uint16 integer
-    out += struct.pack("<H", len(thermo.gray_scale[0]))
+    out += struct.pack("<H", len(thermo.gray_scale[0]) * upscale_factor)
     # And the width of the grayscale image as uint16 integer
-    out += struct.pack("<H", len(thermo.gray_scale))
+    out += struct.pack("<H", len(thermo.gray_scale) * upscale_factor)
 
     # Then a zero byte as seperator
     out += bytes([0x00])
@@ -36,11 +45,11 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
     assert len(out) == 13
 
     # Then the length of the temperature data follows (as uint32), we have to multiply it by 2 as we have 2 bytes per pixel
-    out += struct.pack("<I", len(thermo.temperature) * 2)
+    out += struct.pack("<I", thermo.temperature.size * 2 * upscale_factor**2)
     # Next the height of the temperature data as uint16 integer
-    out += struct.pack("<H", len(thermo.temperature[0]))
+    out += struct.pack("<H", len(thermo.temperature[0]) * upscale_factor)
     # And the width of the temperature data as uint16 integer
-    out += struct.pack("<H", len(thermo.temperature))
+    out += struct.pack("<H", len(thermo.temperature) * upscale_factor)
 
     # Then a zero byte as seperator (or maybe 1?)
     out += bytes([0x00])
@@ -119,25 +128,63 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
 
     return out
 
-def generate_irg_file_bytes(thermo: ThermoImage) -> bytes:
+def upscale_img(img: numpy.ndarray, factor: int) -> numpy.ndarray:
+    """
+    Upscale the given image by the given factor
+    :param img:
+    :param factor:
+    :return:
+    """
+    return numpy.repeat(numpy.repeat(img, factor, axis=0), factor, axis=1)
+
+def generate_irg_file_bytes(thermo: ThermoImage, mode: str = "upscale") -> bytes:
+    """
+    Generates the IRG file bytes for the given ThermoImage
+    :param thermo:
+    :param mode: How to treat the difference between the visible and thermal resolution.
+        * "downscale" will downscale the visible image to the thermal resolution
+        * 'upscale' will upscale the thermal image to the visible resolution
+    :return:
+    """
+
     out = bytes()
 
     # Convert the visible image to a JPEG
     bytes_io = io.BytesIO()
-    thermo.visible.save(bytes_io, format="JPEG")
+
+    if mode == "downscale":
+        # Downscale the visible image to the thermal resolution
+        visible = thermo.visible.resize(thermo.thermal_resolution, resample=0)
+    else:
+        visible = thermo.visible
+
+    visible.save(bytes_io, format="JPEG")
     vis_jpeg_bytes = bytes_io.getvalue()
 
     # Generate the header
     out += generate_irg_header(thermo, vis_jpeg_bytes)
 
-    # Next the grayscale image as uint8 bytes follow
+    upscale_factor = thermo.visible_resolution[0] // thermo.thermal_resolution[0]
+
     # The data needs to be transposed to be in the correct format
-    for row in thermo.gray_scale.transpose():
+    if mode == "upscale":
+        # Upscale the grayscale image to the visible resolution
+        gray_scale = upscale_img(thermo.gray_scale, factor=upscale_factor)
+    else:
+        gray_scale = thermo.gray_scale
+
+    for row in gray_scale.transpose():
         for pixel in row:
-            out += struct.pack("<B", pixel)
+            out += struct.pack("<B", int(pixel))
+
+    if mode == "upscale":
+        # Upscale the temperature data to the visible resolution
+        temperature = upscale_img(thermo.temperature_kelvin(), factor=upscale_factor)
+    else:
+        temperature = thermo.temperature_kelvin()
 
     # Next the temperature data as uint16 bytes follow (in deci kelvin)
-    for row in thermo.temperature_kelvin().transpose():
+    for row in temperature.transpose():
         for pixel in row:
             # For some reason the temperature data is always 0.1 kelvin too low, probably because of an indexing issue
             # We just add one to the value to fix this
@@ -161,7 +208,7 @@ if os.path.isdir(path):
             # Open the IRG file for writing
             with open("input/" + file.replace(".jpg", ".irg"), "wb") as f:
                 # Write the IRG file
-                f.write(generate_irg_file_bytes(picture))
+                f.write(generate_irg_file_bytes(picture, mode="upscale"))
 
 
 # Load the image
