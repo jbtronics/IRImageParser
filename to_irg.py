@@ -62,11 +62,11 @@ def generate_irg_header(thermo : ThermoImage, vis_jpeg_bytes: bytes) -> bytes:
 
     # Then the reflective temperature times 10000 follows (as uint32) (in celsius)
     # Just use a fixed value here
-    out += struct.pack("<I", int(23.0 * 10000))
+    out += struct.pack("<I", int((24.9 + 273) * 10000))
 
     # Then the ambient temperature times 10000 follows (as uint32) (in celsius)
     # Just use a fixed value here
-    out += struct.pack("<I", int(23.0 * 10000))
+    out += struct.pack("<I", int((24.9 + 273) * 10000))
 
     # Then the distance times 1000 follows (as uint32) (in meters)
     # Just use a fixed value here

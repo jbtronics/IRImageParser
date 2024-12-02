@@ -22,6 +22,9 @@ def print_info(image: ThermoImage) -> None:
     print(f"Unit: {metadata.selected_unit.name}")
     print(f"Mixing factor: {metadata.mix_factor}")
     print(f"Image margins: {metadata.image_margins}")
+    print("")
+    print(f"Max temperature in temperature data: {image.temperature_celsius.max()} °C")
+    print(f"Min temperature in temperature data: {image.temperature_celsius.min()} °C")
     print("===========================")
 
 
