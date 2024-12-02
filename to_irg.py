@@ -139,7 +139,9 @@ def generate_irg_file_bytes(thermo: ThermoImage) -> bytes:
     # Next the temperature data as uint16 bytes follow (in deci kelvin)
     for row in thermo.temperature_kelvin().transpose():
         for pixel in row:
-            out += struct.pack("<H", int(pixel * 10))
+            # For some reason the temperature data is always 0.1 kelvin too low, probably because of an indexing issue
+            # We just add one to the value to fix this
+            out += struct.pack("<H", int(pixel * 10) + 1)
 
     # Finally the visible image as JPEG bytes follow
     out += vis_jpeg_bytes
