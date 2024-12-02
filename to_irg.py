@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import io
+import os
 
 # This file should convert the jpeg from the HTI cameras to a Infiray IRG file
 
@@ -146,14 +147,25 @@ def generate_irg_file_bytes(thermo: ThermoImage) -> bytes:
     return out
 
 # Read in the thermo image
-path = "data/p1.jpg"
+path = "input/"
 
+# If path is a folder, iterate over all jpg files in the folder
+if os.path.isdir(path):
+    for file in os.listdir(path):
+        if file.endswith(".jpg"):
+            # Load the image
+            picture = ThermoImage.from_path(path + file)
+
+            # Open the IRG file for writing
+            with open("input/" + file.replace(".jpg", ".irg"), "wb") as f:
+                # Write the IRG file
+                f.write(generate_irg_file_bytes(picture))
 
 
 # Load the image
-picture = ThermoImage.from_path(path)
+#picture = ThermoImage.from_path(path)
 
 # Open the IRG file for writing
-with open("data/p1.irg", "wb") as f:
-    # Write the IRG file
-    f.write(generate_irg_file_bytes(picture))
+#with open("data/p1.irg", "wb") as f:
+#    # Write the IRG file
+#    f.write(generate_irg_file_bytes(picture))
