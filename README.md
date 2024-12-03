@@ -27,6 +27,9 @@ analysis software.
 
 The file format was reversed engineered from the firmware of a HT-04D thermal camera using ghidra.
 
+The maximum and minimum points in the temperature arrays are different from the ones calculated by the camera. This
+is because the camera (and IRImageTools) performs averaging over a 3x3 grid to get the temperature of the pixed.
+
 ## Installation
 
 The library itself requires `pillow` and `numpy` to be installed. The main program requires `matplotlib` to be installed as well.
@@ -72,6 +75,30 @@ Mixing factor: 0
 Image margins: (0, 0, 0, 0)
 ===========================
 ```
+
+### Convert JPG files to IRG files
+This library includes a small script to convert the JPG files of the HTI cameras to the IRG format used by the Infiray,
+Topdon and Vevor Thermal cameras. This allows you to analyze the data with the Infiray IR Discovery software or the [Topdon
+TDView for TC005](https://www.topdon.com/pages/pro-down?fuzzy=TC005) software, which is better than the HTI IRImageTools.
+
+You can pass  files or whole folders containing JPG files from the HTI camera to the script. The script will create a IRG
+file alongside the JPG files. Both JPG and IRG files are required to be in the same folder, so the IR Discovery software
+can open it.
+
+```bash
+# Convert a single JPG file to IRG
+python to_irg.py file.jpg
+
+# Convert all JPG files in the folder to IRG files
+python to_irg.py folder_with_jpg_files/
+```
+
+This script does not touch the JPG file, so it remains usable with the HTI software. However, the IR Discovery software
+might overwrite the JPG file with its own version, so you probably want to keep a backup of the original JPG files.
+
+This script was only possible with the reverse engineering work done by [@jelle737](https://github.com/jelle737/Vevor-Thermal-Utilities/tree/main)
+and [@jaseg](https://github.com/jaseg/infiray_irg). They wrote parser software for the IRG files, which allowed me to
+write a file writer for it.
 
 ## License
 This library is licensed under the MIT license. That means you can use this library for any purpose free of charge,
