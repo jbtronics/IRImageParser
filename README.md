@@ -85,6 +85,9 @@ You can pass  files or whole folders containing JPG files from the HTI camera to
 file alongside the JPG files. Both JPG and IRG files are required to be in the same folder, so the IR Discovery software
 can open it.
 
+As visible and thermal images must have the same resolution, the script will upscale the thermal image to the visible
+resolution by doubling the pixels.
+
 ```bash
 # Convert a single JPG file to IRG
 python to_irg.py file.jpg
