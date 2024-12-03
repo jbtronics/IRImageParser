@@ -195,26 +195,33 @@ def generate_irg_file_bytes(thermo: ThermoImage, mode: str = "upscale") -> bytes
 
     return out
 
-# Read in the thermo image
-path = "input/"
+def convert_file(path: str) -> None:
+    picture = ThermoImage.from_path(path)
 
-# If path is a folder, iterate over all jpg files in the folder
-if os.path.isdir(path):
-    for file in os.listdir(path):
-        if file.endswith(".jpg"):
-            # Load the image
-            picture = ThermoImage.from_path(path + file)
+    # Open the IRG file for writing
+    with open(path.replace(".jpg", ".irg"), "wb") as f:
+        # Write the IRG file
+        f.write(generate_irg_file_bytes(picture, mode="upscale"))
 
-            # Open the IRG file for writing
-            with open("input/" + file.replace(".jpg", ".irg"), "wb") as f:
-                # Write the IRG file
-                f.write(generate_irg_file_bytes(picture, mode="upscale"))
+import argparse
 
+# We allow one or more files and directories to be passed as arguments
 
-# Load the image
-#picture = ThermoImage.from_path(path)
+parser = argparse.ArgumentParser(description="Convert a HTI JPEG image to a Infiray IRG file")
+parser.add_argument("paths", type=str, nargs="+", help="Path to the JPEG image, can be one or more files or directories")
 
-# Open the IRG file for writing
-#with open("data/p1.irg", "wb") as f:
-#    # Write the IRG file
-#    f.write(generate_irg_file_bytes(picture))
+args = parser.parse_args()
+
+for path in args.paths:
+    if os.path.isdir(path):
+        files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith(".jpg")]
+    else:
+        files = [path]
+
+    for file in files:
+        if not file.endswith(".jpg"):
+            print(f"Skipping {file}, not a JPEG file")
+            continue
+
+        convert_file(file)
+        print(f"Successfully created {file.replace('.jpg', '.irg')} for {file}")
