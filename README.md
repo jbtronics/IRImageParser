@@ -32,7 +32,8 @@ is because the camera (and IRImageTools) performs averaging over a 3x3 grid to g
 
 ## Installation
 
-The library itself requires `pillow` and `numpy` to be installed. The main program requires `matplotlib` to be installed as well.
+The library itself requires `pillow` and `numpy` to be installed. The main program requires `matplotlib` to be installed as well. alignTemp.py requires 'tk' and 'matplotlib'  
+
 You can install the library via pip:
 
 ```bash
@@ -102,6 +103,20 @@ might overwrite the JPG file with its own version, so you probably want to keep 
 This script was only possible with the reverse engineering work done by [@jelle737](https://github.com/jelle737/Vevor-Thermal-Utilities/tree/main)
 and [@jaseg](https://github.com/jaseg/infiray_irg). They wrote parser software for the IRG files, which allowed me to
 write a file writer for it.
+
+### Align visible temperature range within one folder
+alignTemp.py
+usage: python alignTemp.py [your/directory/path] [yourCMAP]
+started without arguments a dialog is asking for a directory with Thermalimages
+Importing ignores all JPG files that start with an '_', as exported pure JPG are named like this.
+
+It shows a collage of all the pictures with the settings "minimum temperatures" and "maximum temperatures"
+There is a GUI where you can set temperatures for minimum and maximum, CMAP is the color coding used.
+Changes will be displayed in a new collage when you click on the Show button.
+
+You can export the images with the current setting as "_minTemp-maxTemp<original name>.jpg". 
+The script exports to the same folder where the original thermal images are located.
+
 
 ## License
 This library is licensed under the MIT license. That means you can use this library for any purpose free of charge,
